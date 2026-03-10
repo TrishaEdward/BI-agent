@@ -5,14 +5,11 @@ from data_processor import load_deals_dataframe, load_work_orders_dataframe
 
 
 # =========================
-# HELPER FUNCTIONS
+# HELPER FUNCTION
 # =========================
 
 def find_column(df, keywords):
-    """
-    Finds the first column containing any keyword.
-    Helps handle messy or inconsistent column names.
-    """
+    """Find first column containing keyword"""
     for col in df.columns:
         for key in keywords:
             if key.lower() in col.lower():
@@ -29,7 +26,7 @@ def get_total_pipeline_value(deals_df):
     value_col = find_column(deals_df, ["value"])
 
     if value_col is None:
-        raise ValueError(f"No deal value column found. Columns: {list(deals_df.columns)}")
+        return 0
 
     return float(deals_df[value_col].fillna(0).sum())
 
@@ -40,7 +37,7 @@ def get_pipeline_by_sector(deals_df):
     sector_col = find_column(deals_df, ["sector"])
 
     if value_col is None or sector_col is None:
-        raise ValueError(f"Required columns missing. Columns: {list(deals_df.columns)}")
+        return pd.Series(dtype=float)
 
     return (
         deals_df.groupby(sector_col)[value_col]
@@ -54,7 +51,7 @@ def get_deals_by_stage(deals_df):
     stage_col = find_column(deals_df, ["stage"])
 
     if stage_col is None:
-        raise ValueError(f"Deal stage column missing. Columns: {list(deals_df.columns)}")
+        return pd.Series(dtype=int)
 
     return deals_df[stage_col].value_counts()
 
@@ -64,17 +61,17 @@ def get_deals_by_probability(deals_df):
     prob_col = find_column(deals_df, ["probability"])
 
     if prob_col is None:
-        raise ValueError(f"Closure probability column missing. Columns: {list(deals_df.columns)}")
+        return pd.Series(dtype=int)
 
     return deals_df[prob_col].value_counts()
 
 
 def get_work_order_execution_status(work_orders_df):
 
-    status_col = find_column(work_orders_df, ["execution"])
+    status_col = find_column(work_orders_df, ["execution", "status"])
 
     if status_col is None:
-        raise ValueError(f"Execution status column missing. Columns: {list(work_orders_df.columns)}")
+        return pd.Series(dtype=int)
 
     return work_orders_df[status_col].value_counts()
 
@@ -85,7 +82,7 @@ def get_revenue_by_sector(work_orders_df):
     sector_col = find_column(work_orders_df, ["sector"])
 
     if revenue_col is None or sector_col is None:
-        return None
+        return pd.Series(dtype=float)
 
     return (
         work_orders_df.groupby(sector_col)[revenue_col]
@@ -102,6 +99,9 @@ def pipeline_sector_bar(deals_df):
 
     value_col = find_column(deals_df, ["value"])
     sector_col = find_column(deals_df, ["sector"])
+
+    if value_col is None or sector_col is None:
+        return None
 
     data = (
         deals_df.groupby(sector_col)[value_col]
@@ -123,6 +123,9 @@ def pipeline_sector_pie(deals_df):
     value_col = find_column(deals_df, ["value"])
     sector_col = find_column(deals_df, ["sector"])
 
+    if value_col is None or sector_col is None:
+        return None
+
     data = (
         deals_df.groupby(sector_col)[value_col]
         .sum()
@@ -141,6 +144,9 @@ def deals_stage_horizontal(deals_df):
 
     stage_col = find_column(deals_df, ["stage"])
 
+    if stage_col is None:
+        return None
+
     data = deals_df[stage_col].value_counts().reset_index()
     data.columns = ["Stage", "Count"]
 
@@ -157,6 +163,9 @@ def deals_stage_horizontal(deals_df):
 def deals_probability_pie(deals_df):
 
     prob_col = find_column(deals_df, ["probability"])
+
+    if prob_col is None:
+        return None
 
     data = deals_df[prob_col].value_counts().reset_index()
     data.columns = ["Probability", "Count"]
@@ -215,7 +224,7 @@ def revenue_sector_treemap(work_orders_df):
 
 
 # =========================
-# CHECKBOX GRAPH GENERATOR
+# GRAPH GENERATOR
 # =========================
 
 def generate_selected_graphs(selected_charts, deals_df, work_orders_df):
@@ -223,23 +232,29 @@ def generate_selected_graphs(selected_charts, deals_df, work_orders_df):
     graphs = []
 
     if "Bar Chart" in selected_charts:
-        graphs.append(pipeline_sector_bar(deals_df))
+        g = pipeline_sector_bar(deals_df)
+        if g:
+            graphs.append(g)
 
     if "Pie Chart" in selected_charts:
-        graphs.append(pipeline_sector_pie(deals_df))
+        g = pipeline_sector_pie(deals_df)
+        if g:
+            graphs.append(g)
 
     if "Donut Chart" in selected_charts:
-        donut = revenue_sector_donut(work_orders_df)
-        if donut:
-            graphs.append(donut)
+        g = revenue_sector_donut(work_orders_df)
+        if g:
+            graphs.append(g)
 
     if "Horizontal Bar" in selected_charts:
-        graphs.append(deals_stage_horizontal(deals_df))
+        g = deals_stage_horizontal(deals_df)
+        if g:
+            graphs.append(g)
 
     if "Treemap" in selected_charts:
-        treemap = revenue_sector_treemap(work_orders_df)
-        if treemap:
-            graphs.append(treemap)
+        g = revenue_sector_treemap(work_orders_df)
+        if g:
+            graphs.append(g)
 
     return graphs
 
