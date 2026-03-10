@@ -3,4 +3,5 @@ pandas
 plotly
 requests
 python-dotenv
-openai
+groq
+python-docx
